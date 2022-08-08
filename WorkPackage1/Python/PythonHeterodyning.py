@@ -10,6 +10,7 @@ This is done to stress the differences between Python and C/C++
 """
 
 # import Relevant Librares
+import numpy as np;
 import Timing
 from data import carrier, data
 
@@ -26,6 +27,10 @@ def main():
     for i in range(len(c)):
         result.append(c[i] * d[i])
     Timing.endlog()
+
+    for i in range(len(c)):
+        result[i] = float(result[i])
+    np.savetxt("PythonResult1.txt", result, delimiter=", ")
 
 # Only run the functions if this module is run
 if __name__ == "__main__":

@@ -18,6 +18,16 @@ int main(int argc, char**argv){
         result[i] = data[i] * carrier[i];
     }
     double t = toc();
+
+    FILE *f = fopen("CResults.txt", "w");
+    for(int i = 0; i < SAMPLE_COUNT;i++)
+    {
+    	fprintf(f, "%f\n", result[i]);
+    }
+
+    fclose(f);
+
+
     printf("Time: %lf ms\n",t/1e-3);
     printf("End Unthreaded Test\n");
     return 0;
