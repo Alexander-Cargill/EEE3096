@@ -21,8 +21,6 @@ result = []
 
 # Main function
 def main():
-    print("There are {} samples".format(len(c)))
-    print("using type {}".format(type(data[0])))
     Timing.startlog()
     for i in range(len(c)):
         result.append(c[i] * d[i])

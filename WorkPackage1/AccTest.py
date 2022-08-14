@@ -34,7 +34,7 @@ else:
 print("Comparing Samples...")
 match = 0
 for i in range(index):
-	if(round(PythonResult1[i],4) == round(TestResult[i],4)):
+	if(round(PythonResult1[i],5) == round(TestResult[i],5)):
 		match += 1
 
 print("The outputs match at {res}%.".format(res = match/index*100))

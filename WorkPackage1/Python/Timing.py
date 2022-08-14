@@ -23,16 +23,12 @@ def secondsToStr(elapsed=None):
 def startlog():
     global start
     start = time()
-    log("Starting log")
 
 
 def log(s, elapsed=None):
     line = "="*40
-    print(line)
-    print(secondsToStr(), '-', s)
     if elapsed:
         print("Elapsed time:", elapsed)
-    print(line)
 
 def endlog():
     global start

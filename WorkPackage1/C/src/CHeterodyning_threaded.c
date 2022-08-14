@@ -32,7 +32,7 @@ int main(int argc, char** argv){
 
     // Printing stuff is a critical section...
     pthread_mutex_lock(&Mutex);
-    printf("Threads created :-)\n");
+   // printf("Threads created :-)\n");
     pthread_mutex_unlock(&Mutex);
 
     tic();
@@ -40,16 +40,20 @@ int main(int argc, char** argv){
     for(j = 0; j < Thread_Count; j++){
         if(pthread_join(Thread[j], 0)){
             pthread_mutex_lock(&Mutex);
-            printf("Problem joining thread %d\n", j);
+           // printf("Problem joining thread %d\n", j);
             pthread_mutex_unlock(&Mutex);
         }
     }
 
   // No more active threads, so no more critical sections required
 
-  printf("All threads have quit\n");
-  printf("Time taken for threads to run = %lg ms\n", toc()/1e-3);
-
+ // printf("All threads have quit\n");
+  printf("Time: %lg ms\n", toc()/1e-3);
+  FILE *f = fopen("CResults.txt", "w");
+  for(int i = 0; i < SAMPLE_COUNT; i++)
+  {
+	fprintf(f, "%f\n", result[i]);
+  }
   return 0;
 }
 //------------------------------------------------------------------------------
