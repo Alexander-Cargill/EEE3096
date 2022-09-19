@@ -7,16 +7,12 @@ Author:		Amaan Vally
 In this practical you will learn to use I2C on the STM32 using the HAL. Here, we will
 be interfacing with a DS3231 RTC. We also create functions to convert the data between Binary
 Coded Decimal (BCD) and decimal.
-
 Code is also provided to send data from the STM32 to other devices using UART protocol
 by using HAL. You will need Putty or a Python script to read from the serial port on your PC.
-
 UART Connections are as follows: red->5V black->GND white(TX)->PA2 green(RX;unused)->PA3.
 Open device manager and go to Ports. Plug in the USB connector with the STM powered on. Check the port number (COMx).
 Open up Putty and create a new Serial session on that COMx with baud rate of 9600.
-
 https://www.youtube.com/watch?v=EEsI9MxndbU&list=PLfIJKC1ud8ghc4eFhI84z_3p3Ap2MCMV-&index=4
-
 RTC Connections: (+)->5V (-)->GND D->PB7 (I2C1_SDA) C->PB6 (I2C1_SCL)
   ******************************************************************************
   */
@@ -54,10 +50,11 @@ typedef struct {
 //TO DO:
 //TASK 4
 //Define the RTC slave address
-#define DS3231_ADDRESS 0x00
+#define DS3231_ADDRESS 0xD0
 
 #define EPOCH_2022 1640988000
 /* USER CODE END PD */
+
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
@@ -72,7 +69,7 @@ DMA_HandleTypeDef hdma_usart2_tx;
 
 /* USER CODE BEGIN PV */
 char buffer[64];
-char test[64];
+char epoch[64];
 uint8_t data [] = "Hello from STM32!\r\n";
 
 TIME time;
@@ -93,6 +90,7 @@ int bcdToDec(uint8_t val);
 void setTime (uint8_t sec, uint8_t min, uint8_t hour, uint8_t dow, uint8_t dom, uint8_t month, uint8_t year);
 void getTime (void);
 int epochFromTime(TIME time);
+
 
 /* USER CODE END PFP */
 
@@ -138,9 +136,8 @@ int main(void){
 
   //TO DO
   //TASK 6
+  setTime((uint8_t)15, (uint8_t)0, (uint8_t)0, (uint8_t)1, (uint8_t)2, (uint8_t)2, (uint8_t)22);
 
-  setTime((uint8_t)15, (uint8_t)9, (uint8_t)14, (uint8_t)1, (uint8_t)5, (uint8_t)9, (uint8_t)22);
-  getTime();
 
   /* USER CODE END 2 */
 
@@ -153,16 +150,16 @@ int main(void){
 	//TASK 1
 	//First run this with nothing else in the loop and scope pin PC8 on an oscilloscope
 
-
 	//TO DO:
 	//TASK 6
 
-	sprintf("%d\r\n", time.year);
-	HAL_UART_Transmit(&huart2, test, sizeof(test), 1000);
+	getTime();
 
-	sprintf(buffer, "Date -> %d/%d/%d || Time -> %d:%d:%d\r\n", time.year, time.month, time.dayofmonth, time.hour, time.minutes, time.seconds);
-	HAL_UART_Transmit(&huart2, buffer, sizeof(buffer), 1000);
-	HAL_Delay(980);
+	sprintf(buffer, "Date -> %02d/%02d/%02d || Time -> %02d:%02d:%02d\r\n", time.year, time.month, time.dayofmonth, time.hour, time.minutes, time.seconds);
+	HAL_UART_Transmit(&huart2, (uint8_t*)buffer, sizeof(buffer), 1000);
+	sprintf(epoch, "Epoch -> %d\r\n\n", epochFromTime(time));
+	HAL_UART_Transmit(&huart2, (uint8_t*)epoch, sizeof(epoch), 1000);
+	HAL_Delay(998);
 
 
 
@@ -174,6 +171,7 @@ int main(void){
   }
   /* USER CODE END 3 */
 }
+
 
 /**
   * @brief System Clock Configuration
@@ -367,12 +365,14 @@ uint8_t decToBcd(int val)
 
 	// Send two digit chunks
 
-	uint8_t x1 = val/10;
-	uint8_t x2 = val%10;
+//	uint8_t x1 = val/10;
+//	uint8_t x2 = val%10;
+//
+//	x1 = x1 << 4;
+//
+//	return x1|x2;
 
-	x1 = x1 << 4;
-
-	return x1|x2;
+	return (uint8_t)((val/10*16)+(val%10));
 
 
 }
@@ -383,11 +383,13 @@ int bcdToDec(uint8_t val)
 	//TASK 3
 	//Complete the BCD to decimal function
 
-	uint8_t x1 = val & 0b11110000;
-	x1 = x1 >> 4;
-	uint8_t x2 = val & 0b00001111;
+//	uint8_t x1 = val & 0b11110000;
+//	x1 = x1 >> 4;
+//	uint8_t x2 = val & 0b00001111;
+//
+//	return (x1*10 + x2);
 
-	return (x1 * 10 + x2);
+	return (int)((val/16*10)+(val%16));
 
 
 }
@@ -402,7 +404,7 @@ void setTime (uint8_t sec, uint8_t min, uint8_t hour, uint8_t dow, uint8_t dom, 
 
 	set_time[0] = decToBcd(sec);
 	set_time[1] = decToBcd(min);
-	set_time[2] = (decToBcd(hour) & 00111111);
+	set_time[2] = decToBcd(hour);
 	set_time[3] = decToBcd(dow);
 	set_time[4] = decToBcd(dom);
 	set_time[5] = decToBcd(month);
@@ -412,7 +414,7 @@ void setTime (uint8_t sec, uint8_t min, uint8_t hour, uint8_t dow, uint8_t dom, 
 	//fill in the address of the RTC, the address of the first register to write anmd the size of each register
 	//The function and RTC supports multiwrite. That means we can give the function a buffer and first address
 	//and it will write 1 byte of data, increment the register address, write another byte and so on
-	HAL_I2C_Mem_Write(&hi2c1, DS3231_ADDRESS, 0x00, 8, set_time, 7, 1000);
+	HAL_I2C_Mem_Write(&hi2c1, DS3231_ADDRESS, 0x00, 1, set_time, 7, 1000);
 
 }
 //
@@ -428,7 +430,7 @@ void getTime (void)
 	//fill in the address of the RTC, the address of the first register to write anmd the size of each register
 	//The function and RTC supports multiread. That means we can give the function a buffer and first address
 	//and it will read 1 byte of data, increment the register address, write another byte and so on
-	HAL_I2C_Mem_Read(&hi2c1, DS3231_ADDRESS, 0x0, 0x8, get_time, 7, 1000);
+	HAL_I2C_Mem_Read(&hi2c1, DS3231_ADDRESS, 0x00, 0x1, get_time, 7, 1000);
 
 	time.seconds = bcdToDec(get_time[0]);
 	time.minutes = bcdToDec(get_time[1]);
@@ -449,9 +451,24 @@ int epochFromTime(TIME time){
 	//It is define above as EPOCH_2022. You can work from that and ignore the effects of leap years/seconds
 
 
-	uint64_t seconds_elapsed =  time.seconds + time.minutes*60 + time.hour * 3600 + (time.dayofmonth -1) * 604800 + (time.month-1) * 2629743 + (time.year-2022)*31556926;
+	uint64_t seconds_elapsed =  time.seconds + time.minutes*60 + time.hour * 3600 + (time.dayofmonth-1)*86400 + (time.year-22)*31536000;
 
+	for(int i = 0; i < time.month; i++)
+	{
 
+		if(i == 1 || i == 3 ||  i == 5 || i==7 || i==8 || i==10|| i==12)
+		{
+			seconds_elapsed += 31 * 86400;
+		}
+		if( i == 4 || i ==6 || i == 9 || i==11)
+		{
+			seconds_elapsed += 30 * 86400;
+		}
+		if(i == 2)
+		{
+			seconds_elapsed += 28 * 86400;
+		}
+	}
 
 	return EPOCH_2022 + seconds_elapsed;
 }
